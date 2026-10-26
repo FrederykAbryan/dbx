@@ -387,6 +387,7 @@ async function initializeUpdatePreparation() {
         showMultiDbExecuteDialog.value ||
         [
           dialogs.showTransferDialog,
+          dialogs.showInstalledConnectionsDialog,
           dialogs.showSqlFileDialog,
           dialogs.showTableImportDialog,
           dialogs.showMongoImportDialog,

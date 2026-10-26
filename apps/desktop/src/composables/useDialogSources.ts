@@ -7,8 +7,12 @@ import { rememberExportPassphrase } from "@/lib/backend/exportPassphraseSession"
 import { hasSidebarLayoutEntries } from "@/lib/sidebar/sidebarLayout";
 import type { ConnectionConfigBundle } from "@/lib/connection/connectionConfigTransfer";
 import type { ConnectionConfig, DatabaseType, SidebarLayout } from "@/types/database";
+import { isTauriRuntime } from "@/lib/backend/tauriRuntime";
+import { planInstalledConnectionImport, installedConnectionAppLabels, type InstalledConnectionGroup, type InstalledConnectionSelection, type InstalledConnectionSource } from "@/lib/imports/installedConnections";
 
 const showTransferDialog = ref(false);
+const showInstalledConnectionsDialog = ref(false);
+let manualImportSequence = 0;
 const transferTaskId = ref<string | null>(null);
 const showSchemaDiffDialog = ref(false);
 const showDataCompareDialog = ref(false);
@@ -525,7 +529,62 @@ export function useDialogSources() {
     if (!open) showConfigPassphraseDialog.value = true;
   }
 
-  async function onImportClick(source: "dbx" | "navicat" | "dbeaver" | "datagrip" | "rdm" = "dbx") {
+  async function readInstalledConnectionFile(source: InstalledConnectionSource["source"]): Promise<InstalledConnectionGroup | null> {
+    const result = await connectionStore.readImportFile(source);
+    if (!result) return null;
+    if (result.encrypted) {
+      clearPendingImportState();
+      pendingImportContent.value = result.content;
+      pendingImportSource.value = source;
+      configPassphraseMode.value = "import";
+      configPassphraseError.value = "";
+      showInstalledConnectionsDialog.value = false;
+      showConfigPassphraseDialog.value = true;
+      return null;
+    }
+    const preview = await connectionStore.parseConnectionsImport(result.content, null);
+    return { source, label: installedConnectionAppLabels[source], path: `manual:${++manualImportSequence}`, content: result.content, preview };
+  }
+
+  async function onInstalledConnectionsSelected(selections: InstalledConnectionSelection[]) {
+    if (applyingImportSelection.value) return;
+    const { preview, updates } = planInstalledConnectionImport(selections, connectionStore.connections);
+    if (!preview.connections.length && !updates.length) {
+      toast(t("installedImport.alreadyImported", "Selected connections are already imported."), 3000);
+      showInstalledConnectionsDialog.value = false;
+      return;
+    }
+    applyingImportSelection.value = true;
+    try {
+      for (const update of updates) await connectionStore.updateConnection(update);
+      const { count, layout } = preview.connections.length ? await connectionStore.applyConnectionsImport(preview) : { count: 0, layout: undefined };
+      // Restore each DataGrip payload for its optional Keychain lookup.
+      for (const selection of selections.filter((item) => item.group.source === "datagrip")) {
+        try {
+          await connectionStore.parseConnectionsImport(selection.group.content, null);
+          await connectionStore.applyDataGripKeychainPasswords();
+        } catch {
+          // The imported connection remains usable with credentials entered manually.
+        }
+      }
+      showInstalledConnectionsDialog.value = false;
+      await finishImport("dbx", count + updates.length, layout);
+    } catch (error: any) {
+      toast(error?.message || String(error), 4000);
+    } finally {
+      applyingImportSelection.value = false;
+    }
+  }
+
+  async function onImportClick(source: "installed" | "dbx" | "navicat" | "dbeaver" | "datagrip" | "rdm" = "installed") {
+    if (source === "installed") {
+      if (isTauriRuntime()) {
+        showInstalledConnectionsDialog.value = true;
+        return;
+      }
+      source = "dbx";
+    }
+    showInstalledConnectionsDialog.value = false;
     try {
       const result = await connectionStore.readImportFile(source);
       if (!result) return;
@@ -605,6 +664,9 @@ export function useDialogSources() {
   }
 
   return {
+    showInstalledConnectionsDialog,
+    readInstalledConnectionFile,
+    onInstalledConnectionsSelected,
     showTransferDialog,
     transferTaskId,
     showSchemaDiffDialog,
