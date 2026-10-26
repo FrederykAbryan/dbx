@@ -245,3 +245,16 @@ export const installedImportMessages = {
     alreadyImported: "所選連線已匯入。",
   },
 } satisfies Record<Locale, InstalledImportMessages>;
+
+export const installedImportAz = installedImportMessages.az;
+export const installedImportEn = installedImportMessages.en;
+export const installedImportEs = installedImportMessages.es;
+export const installedImportId = installedImportMessages.id;
+export const installedImportIt = installedImportMessages.it;
+export const installedImportJa = installedImportMessages.ja;
+export const installedImportKo = installedImportMessages.ko;
+export const installedImportPtBR = installedImportMessages["pt-BR"];
+export const installedImportRu = installedImportMessages.ru;
+export const installedImportTr = installedImportMessages.tr;
+export const installedImportZhCN = installedImportMessages["zh-CN"];
+export const installedImportZhTW = installedImportMessages["zh-TW"];

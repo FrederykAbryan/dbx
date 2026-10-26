@@ -1,4 +1,4 @@
-import { installedImportMessages } from "./installedImportMessages";
+import { installedImportJa as installedImport } from "./installedImportMessages";
 import { tableColumnPasteJa as tableColumnPaste } from "./tableColumnPaste";
 import { sidebarMenuJa as sidebarMenu } from "./sidebarMenuMessages";
 import { oceanbaseCloneDialogJa as oceanbaseCloneDialog } from "./oceanbaseCloneDialog";
@@ -67,7 +67,7 @@ const consul = {
 };
 
 export default withEnglishFallback({
-  installedImport: installedImportMessages["ja"],
+  installedImport,
   oracleTrigger: {
     errorPositionUnavailable: "ソースを開きました。エラー位置を確認できないため、表示された行と列を確認してください。",
     reconcileStructure: "実行済みの変更を照合",

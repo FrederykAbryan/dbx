@@ -1,4 +1,4 @@
-import { installedImportMessages } from "./installedImportMessages";
+import { installedImportEn as installedImport } from "./installedImportMessages";
 import { tableColumnPasteEn as tableColumnPaste } from "./tableColumnPaste";
 import { sidebarMenuEn as sidebarMenu } from "./sidebarMenuMessages";
 import { oceanbaseCloneDialogEn as oceanbaseCloneDialog } from "./oceanbaseCloneDialog";
@@ -66,7 +66,7 @@ const consul = {
 };
 
 export default {
-  installedImport: installedImportMessages["en"],
+  installedImport,
   oracleTrigger: {
     errorPositionUnavailable: "Source opened. The error location could not be verified; check the reported line and column.",
     reconcileStructure: "Reconcile applied changes",

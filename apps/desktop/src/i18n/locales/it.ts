@@ -1,4 +1,4 @@
-import { installedImportMessages } from "./installedImportMessages";
+import { installedImportIt as installedImport } from "./installedImportMessages";
 import { tableColumnPasteIt as tableColumnPaste } from "./tableColumnPaste";
 import { sidebarMenuIt as sidebarMenu } from "./sidebarMenuMessages";
 import { oceanbaseCloneDialogIt as oceanbaseCloneDialog } from "./oceanbaseCloneDialog";
@@ -66,7 +66,7 @@ const consul = {
 };
 
 export default withEnglishFallback({
-  installedImport: installedImportMessages["it"],
+  installedImport,
   oracleTrigger: {
     errorPositionUnavailable: "Sorgente aperto. Impossibile verificare la posizione dell'errore; controllare la riga e la colonna indicate.",
     reconcileStructure: "Riconcilia le modifiche applicate",

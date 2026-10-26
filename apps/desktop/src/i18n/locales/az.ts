@@ -1,4 +1,4 @@
-import { installedImportMessages } from "./installedImportMessages";
+import { installedImportAz as installedImport } from "./installedImportMessages";
 import { tableColumnPasteAz as tableColumnPaste } from "./tableColumnPaste";
 import { sidebarMenuAz as sidebarMenu } from "./sidebarMenuMessages";
 import { withEnglishFallback } from "./fallback";
@@ -63,7 +63,7 @@ const consul = {
 };
 
 export default withEnglishFallback({
-  installedImport: installedImportMessages["az"],
+  installedImport,
   tableColumnPaste,
   objectDependencies: {
     dependencies: "Asılılıqlar",

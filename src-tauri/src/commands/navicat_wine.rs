@@ -28,7 +28,7 @@ fn logical_lines(content: &str) -> Vec<String> {
 }
 
 fn hex_bytes(value: &str) -> Option<Vec<u8>> {
-    if value.len() % 2 != 0 || value.len() > 32768 {
+    if !value.len().is_multiple_of(2) || value.len() > 32768 {
         return None;
     }
     value
