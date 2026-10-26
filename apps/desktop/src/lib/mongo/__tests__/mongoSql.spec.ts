@@ -23,8 +23,8 @@ describe("translateMongoSqlScript", () => {
 
   it("keeps ObjectId and ISODate constructors in the filter", () => {
     const { text, command } = shell("SELECT * FROM users WHERE _id = ObjectId('507f1f77bcf86cd799439011') AND created = ISODate('2020-01-02T03:04:05Z')");
-    expect(text).toContain("ObjectId(\"507f1f77bcf86cd799439011\")");
-    expect(text).toContain("ISODate(\"2020-01-02T03:04:05Z\")");
+    expect(text).toContain('ObjectId("507f1f77bcf86cd799439011")');
+    expect(text).toContain('ISODate("2020-01-02T03:04:05Z")');
     expect(command.kind).toBe("find");
     if (command.kind !== "find") return;
     expect(JSON.parse(command.filter)).toEqual({
@@ -37,12 +37,7 @@ describe("translateMongoSqlScript", () => {
     const { command } = shell("SELECT status, COUNT(*) AS n FROM users WHERE active = true GROUP BY status ORDER BY n DESC");
     expect(command.kind).toBe("aggregate");
     if (command.kind !== "aggregate") return;
-    expect(JSON.parse(command.pipeline)).toEqual([
-      { $match: { active: true } },
-      { $group: { _id: "$status", n: { $sum: 1 } } },
-      { $project: { status: "$_id", n: 1, _id: 0 } },
-      { $sort: { n: -1 } },
-    ]);
+    expect(JSON.parse(command.pipeline)).toEqual([{ $match: { active: true } }, { $group: { _id: "$status", n: { $sum: 1 } } }, { $project: { status: "$_id", n: 1, _id: 0 } }, { $sort: { n: -1 } }]);
   });
 
   it("compiles an equality join into $lookup", () => {
@@ -127,10 +122,7 @@ describe("translateMongoSqlScript", () => {
     const renamed = shell("SELECT address.city AS city FROM users ORDER BY address.city");
     expect(renamed.command.kind).toBe("aggregate");
     if (renamed.command.kind !== "aggregate") return;
-    expect(JSON.parse(renamed.command.pipeline)).toEqual([
-      { $sort: { "address.city": 1 } },
-      { $project: { city: "$address.city", _id: 0 } },
-    ]);
+    expect(JSON.parse(renamed.command.pipeline)).toEqual([{ $sort: { "address.city": 1 } }, { $project: { city: "$address.city", _id: 0 } }]);
 
     const named = shell("SELECT window FROM window WHERE over = 1");
     expect(named.command.kind).toBe("find");
@@ -176,10 +168,7 @@ describe("translateMongoSqlScript", () => {
     const { command } = shell("SELECT name AS n FROM users ORDER BY age");
     expect(command.kind).toBe("aggregate");
     if (command.kind !== "aggregate") return;
-    expect(JSON.parse(command.pipeline)).toEqual([
-      { $sort: { age: 1 } },
-      { $project: { n: "$name", _id: 0 } },
-    ]);
+    expect(JSON.parse(command.pipeline)).toEqual([{ $sort: { age: 1 } }, { $project: { n: "$name", _id: 0 } }]);
   });
 
   it("rejects negative array indexes on the query path", () => {

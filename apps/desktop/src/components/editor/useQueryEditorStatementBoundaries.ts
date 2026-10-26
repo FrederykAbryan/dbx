@@ -88,7 +88,14 @@ export function useQueryEditorStatementBoundaries(options: QueryEditorStatementB
     if (pendingAnalysis?.doc === state.doc && pendingAnalysis.generation === statementBoundariesGeneration) return pendingAnalysis.result;
     const generation = statementBoundariesGeneration;
     const result = analysisWorker
-      .analyze({ sql: state.doc.toString(), databaseType: queryEditorStatementDatabaseType(props.databaseType, props.mongoQueryLanguage), parameterOptions: sqlStatementParameterOptions(), includeFolds: true, syntaxDialect: options.syntaxDialect?.() ?? props.syntaxDialect ?? props.dialect, driverProfile: options.driverProfile?.() })
+      .analyze({
+        sql: state.doc.toString(),
+        databaseType: queryEditorStatementDatabaseType(props.databaseType, props.mongoQueryLanguage),
+        parameterOptions: sqlStatementParameterOptions(),
+        includeFolds: true,
+        syntaxDialect: options.syntaxDialect?.() ?? props.syntaxDialect ?? props.dialect,
+        driverProfile: options.driverProfile?.(),
+      })
       .then((analysis) => {
         const currentView = view.value ?? trackedView;
         if (!analysis || generation !== statementBoundariesGeneration || currentView?.state.doc !== state.doc) return null;

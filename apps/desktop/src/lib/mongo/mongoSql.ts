@@ -111,16 +111,9 @@ interface OrderKey {
   direction: 1 | -1;
 }
 
-type Tok =
-  | { kind: "ident"; text: string }
-  | { kind: "string"; text: string }
-  | { kind: "number"; value: number }
-  | { kind: "op"; text: string }
-  | { kind: "eof" };
+type Tok = { kind: "ident"; text: string } | { kind: "string"; text: string } | { kind: "number"; value: number } | { kind: "op"; text: string } | { kind: "eof" };
 
-const RESERVED = new Set(
-  "select from where group by order limit offset insert into values update set delete as join inner left right full cross outer on and or not in is null like ilike between union intersect except with distinct having over window true false".split(" "),
-);
+const RESERVED = new Set("select from where group by order limit offset insert into values update set delete as join inner left right full cross outer on and or not in is null like ilike between union intersect except with distinct having over window true false".split(" "));
 
 function translateMongoSqlStatement(sql: string): string {
   const parser = new Parser(sql);
@@ -690,7 +683,7 @@ function compileSelect(items: SelectItem[], from: TableRef, joins: Join[], where
     const chain = [orderBy.length ? `.sort(${printShell(orderDocument(orderBy, items, false, aliases, from))})` : "", offset ? `.skip(${offset})` : "", limit !== undefined ? `.limit(${limit})` : ""].join("");
     return `${mongoCall(from, "find", args)}${chain}`;
   }
-    if (items.some((item) => item.type === "agg") && !groupBy) {
+  if (items.some((item) => item.type === "agg") && !groupBy) {
     const onlyCount = items.length === 1 && items[0]?.fn === "count" && items[0].star && !items[0].alias;
     if (onlyCount && !orderBy.length && limit === undefined && offset === undefined && joins.length === 0) {
       const filter = where ? exprToFilter(where, aliases) : {};
