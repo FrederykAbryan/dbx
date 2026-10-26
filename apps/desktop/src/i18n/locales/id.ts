@@ -458,6 +458,11 @@ export default withEnglishFallback({
     alwaysOnTop: "Tetap di atas jendela lain",
     alwaysOnTopOff: "Jangan tetap di atas",
     blockDangerousRedisCommands: "Blokir perintah berbahaya",
+    mongoQueryLanguage: "Bahasa kueri MongoDB",
+    mongoShellMode: "Shell",
+    mongoSqlMode: "SQL",
+    copyMongoShell: "Salin shell yang dibuat",
+    mongoShellCopied: "Perintah mongo shell disalin",
     multiDbExecute: "Eksekusi multi-database",
   },
   multiDbExecute: {
@@ -2120,6 +2125,8 @@ export default withEnglishFallback({
   queryMessages: {
     empty: "Tidak ada pesan",
     code: "Kode: {code}",
+    mongoShell: "Shell mongo yang dibuat",
+    copyMongoShell: "Salin shell",
   },
   chart: {
     title: "Chart",
@@ -7557,6 +7564,8 @@ export default withEnglishFallback({
     exportData: "Ekspor Data",
   },
   sqlFile: {
+    resolveIncludes: "Proses penyertaan file SQL",
+    resolveIncludesHint: "Mendukung -- {'@'}include \"path.sql\"; hanya file .sql dalam direktori skrip utama yang diizinkan.",
     encodingHint: "Berlaku untuk semua file yang dipilih. Jika ada BOM, pengodean yang ditunjukkannya diutamakan.",
     manualTransactionHint: "Perubahan menunggu Commit atau Rollback. Galat akan di-rollback. DDL dan COMMIT di dalam file tetap dapat melakukan commit perubahan.",
     manualCancelHint: "Pembatalan menunggu pernyataan saat ini selesai, lalu me-rollback perubahan yang belum di-commit.",
@@ -8715,7 +8724,7 @@ export default withEnglishFallback({
     sidebarTableSearchEnabled: "Aktifkan pencarian tabel dalam database",
     sidebarTableSearchEnabledDescription: "Tampilkan kotak pencarian tabel lokal di bawah database, skema, atau grup tabel yang diperluas sehingga setiap cakupan dapat memfilter tabelnya sendiri.",
     sidebarSearchOpenedDatabasesOnly: "Cari hanya pada database yang terbuka",
-    sidebarSearchOpenedDatabasesOnlyDescription: "Pencarian bilah sisi hanya memuat database yang sudah Anda buka pada koneksi aktif (semuanya jika tidak ada yang terbuka). Nonaktifkan untuk mencari semua database pada koneksi tersebut.",
+    sidebarSearchOpenedDatabasesOnlyDescription: "Pencarian bilah sisi hanya memuat database yang sudah Anda buka pada koneksi aktif. Nonaktifkan untuk mencari semua database pada koneksi tersebut.",
     sidebarObjectInfoMode: "Info tambahan bilah sisi",
     sidebarObjectInfoModeDescription:
       "Pilih komentar, ukuran objek, keduanya, atau tanpa info tambahan. Jika keduanya dipilih, komentar tampil setelah nama dan ukuran di paling kanan. Informasi yang datanya tidak tersedia akan disembunyikan. Total database saat ini mendukung PostgreSQL; ukuran tabel mendukung MySQL, PostgreSQL, GaussDB, KingbaseES, GBase 8a, SQL Server, Oracle, Dameng, dan ClickHouse.",

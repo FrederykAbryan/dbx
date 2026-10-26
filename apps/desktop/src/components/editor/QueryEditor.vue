@@ -144,12 +144,15 @@ import { createQueryEditorCompletionShortcutBindings } from "@/lib/editor/queryE
 import { handleQueryEditorCompletionNavigation } from "@/lib/editor/queryEditorCompletionNavigation";
 import { createQueryEditorSelectionCaseShortcutBindings } from "@/lib/editor/queryEditorSelectionCaseShortcut";
 import { createQueryEditorExecutionShortcutBindings, createQueryEditorExecutionShortcutHandler, createQueryEditorPostCompositionKeyGuard } from "@/lib/editor/queryEditorExecutionShortcut";
-import { supportsQueryEditorBlockComments, supportsSqlInListPaste } from "@/lib/database/databaseFeatureSupport";
+import { supportsPlDebugRoutine, supportsQueryEditorBlockComments, supportsSqlInListPaste } from "@/lib/database/databaseFeatureSupport";
+import { effectiveDatabaseTypeForConnection } from "@/lib/database/jdbcDialect";
+import { launchPlDebugAnonymous } from "@/components/debug/plDebugLaunch";
 import { queryContextObjectRoute, queryTableCandidateAtSqlPosition, resolveQueryContextCandidateDatabase, resolveQueryContextObjectTarget, type QueryContextObjectAction } from "@/lib/sql/queryCursorTableTarget";
 import * as api from "@/lib/backend/api";
 import { isTauriRuntime } from "@/lib/backend/tauriRuntime";
 import { isMacOS } from "@/lib/backend/platform";
 import { resolveSqlDialectId } from "@/lib/sql/semantic/dialect";
+import { queryEditorStatementDatabaseType } from "@/lib/mongo/mongoSql";
 import { kingbaseSqlDatabaseType } from "@/lib/database/jdbcDialect";
 import type { SqlCompletionColumn, SqlCompletionContext, SqlCompletionReferencedTable } from "@/lib/sql/sqlCompletion";
 
@@ -171,7 +174,12 @@ function sqlSyntaxDialect() {
 
 function queryEditorSelectionLanguage(): "sql" | "text" {
   const databaseType = props.databaseType;
+  if (databaseType === "mongodb" && props.mongoQueryLanguage === "sql") return "sql";
   return databaseType === "redis" || databaseType === "mongodb" || databaseType === "elasticsearch" || databaseType === "easysearch" || databaseType === "meilisearch" || databaseType === "solr" || databaseType === "victoriametrics" ? "text" : "sql";
+}
+
+function statementDatabaseType() {
+  return queryEditorStatementDatabaseType(props.databaseType, props.mongoQueryLanguage);
 }
 
 const COMPLETION_REMOTE_LATENCY_BUDGET_MS = 120;
@@ -1202,12 +1210,12 @@ function emitContextObjectAction(action: QueryContextObjectAction) {
 }
 
 function executableStatementRangeStartingAt(currentView: EditorViewType, lineFrom: number) {
-  executableStatementRangeCache = executableStatementRangeCacheForDoc(executableStatementRangeCache, currentView.state.doc, props.databaseType, sqlStatementParameterOptions());
+  executableStatementRangeCache = executableStatementRangeCacheForDoc(executableStatementRangeCache, currentView.state.doc, statementDatabaseType(), sqlStatementParameterOptions());
   return executableStatementRangeStartingAtLine(executableStatementRangeCache, lineFrom);
 }
 
 function executableStatementRangeAtPosition(currentView: EditorViewType, position: number): SqlTextRange | null {
-  executableStatementRangeCache = executableStatementRangeCacheForDoc(executableStatementRangeCache, currentView.state.doc, props.databaseType, sqlStatementParameterOptions());
+  executableStatementRangeCache = executableStatementRangeCacheForDoc(executableStatementRangeCache, currentView.state.doc, statementDatabaseType(), sqlStatementParameterOptions());
   return executableStatementRangeAtCursor(executableStatementRangeCache, position);
 }
 
@@ -1304,6 +1312,19 @@ function navigateStatementFromView(currentView: EditorViewType, direction: State
 }
 
 const contextMenuActions: QueryEditorContextMenuActions = {
+  debugPlSqlFromContextMenu: () => {
+    const currentView = view.value;
+    if (!currentView || !props.connectionId || !props.database) return;
+    const selection = currentView.state.selection.main;
+    void launchPlDebugAnonymous({
+      connectionId: props.connectionId,
+      database: props.database,
+      databaseType: effectiveDatabaseTypeForConnection(connectionStore.getConfig(props.connectionId)) ?? props.databaseType,
+      schema: props.schema,
+      selectedText: currentView.state.doc.sliceString(selection.from, selection.to),
+      documentText: currentView.state.doc.toString(),
+    });
+  },
   executeFromContextMenu,
   executeAllFromContextMenu,
   executeInNewResultTabFromContextMenu,
@@ -1351,6 +1372,7 @@ function getContextMenuState(): QueryEditorContextMenuState {
     readOnly: props.readOnly,
     hideExecutionControls: props.hideExecutionControls,
     databaseType: props.databaseType,
+    canDebugPlSql: !!props.connectionId && !!props.database && supportsPlDebugRoutine(effectiveDatabaseTypeForConnection(connectionStore.getConfig(props.connectionId || "")) ?? props.databaseType),
     selectedSql: selectedSql.value,
     executableSql: executableSql.value,
     previewContextSql: previewContextSql.value,
@@ -1889,7 +1911,7 @@ async function formatCurrentSql() {
     let formatted: string;
     let formattedAsSql = false;
     let formatDiagnostic: SqlFormatterDiagnostic | undefined;
-    if (props.databaseType === "mongodb") {
+    if (props.databaseType === "mongodb" && props.mongoQueryLanguage !== "sql") {
       formatted = formatMongoShellText(source, settingsStore.editorSettings.sqlFormatter);
     } else {
       const esRequest = detectAndFormatElasticsearchRequests(source, props.databaseType, settingsStore.editorSettings.sqlFormatter.tabWidth);
@@ -2739,7 +2761,7 @@ watch([() => props.clientSessionId, () => props.completionContextVersion], () =>
 });
 
 watch(
-  [() => props.tabId, () => props.databaseType, () => props.dialect, sqlSyntaxDialect, sqlDriverProfile, () => kingbaseConfig.value?.database_info?.compatibilityMode],
+  [() => props.tabId, () => props.databaseType, () => props.dialect, () => props.syntaxDialect, sqlSyntaxDialect, () => props.mongoQueryLanguage, sqlDriverProfile, () => kingbaseConfig.value?.database_info?.compatibilityMode],
   () => {
     completion.invalidateRequests();
     refreshCompletionCache();

@@ -2426,13 +2426,15 @@ const visibleCrossScopeShortcutPairCount = computed(() => countShortcutConflictP
 
 // 二级归类：快捷键页签按作用域分组展示。顺序即运行时优先级——越外层先响应，
 // 用户读到的顺序与事件实际分发顺序一致。
-const SHORTCUT_SCOPE_ORDER: readonly ShortcutScope[] = ["global", "editor", "grid", "search", "sidebar"];
+const SHORTCUT_SCOPE_ORDER: readonly ShortcutScope[] = ["global", "debug", "editor", "grid", "search", "sidebar"];
 
 function shortcutScopeLabelKey(scope: ShortcutScope): string {
+  if (scope === "debug") return "plDebug.start.title";
   return `settings.shortcutScope${scope[0].toUpperCase()}${scope.slice(1)}`;
 }
 
 function shortcutScopeHintKey(scope: ShortcutScope): string {
+  if (scope === "debug") return "plDebug.shortcutsHint";
   return `settings.shortcutScopeHint${scope[0].toUpperCase()}${scope.slice(1)}`;
 }
 
@@ -2440,6 +2442,7 @@ function shortcutScopeIcon(scope: ShortcutScope) {
   switch (scope) {
     case "global":
       return Globe;
+    case "debug":
     case "editor":
       return Code;
     case "grid":

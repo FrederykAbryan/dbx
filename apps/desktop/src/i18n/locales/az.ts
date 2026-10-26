@@ -305,6 +305,11 @@ export default withEnglishFallback({
     alwaysOnTop: "Pəncərəni üstə saxla",
     alwaysOnTopOff: "Üstdə saxlamanı ləğv et",
     blockDangerousRedisCommands: "Təhlükəli əmrləri blokla",
+    mongoQueryLanguage: "MongoDB sorğu dili",
+    mongoShellMode: "Shell",
+    mongoSqlMode: "SQL",
+    copyMongoShell: "Yaradılmış shell-i kopyala",
+    mongoShellCopied: "Mongo shell əmri kopyalandı",
     multiDbExecute: "Bir neçə verilənlər bazasında icra et",
   },
   multiDbExecute: {
@@ -1852,6 +1857,8 @@ export default withEnglishFallback({
   queryMessages: {
     empty: "Mesaj yoxdur",
     code: "Kod: {code}",
+    mongoShell: "Yaradılmış mongo shell",
+    copyMongoShell: "Shell-i kopyala",
   },
   chart: {
     title: "Diaqram",
@@ -6870,6 +6877,8 @@ export default withEnglishFallback({
     exportData: "Məlumatları ixrac et",
   },
   sqlFile: {
+    resolveIncludes: "SQL fayl istinadlarını həll et",
+    resolveIncludesHint: "-- {'@'}include \"path.sql\" dəstəklənir; yalnız əsas skript qovluğundakı .sql fayllarına icazə verilir.",
     encodingHint: "Bütün seçilmiş fayllara tətbiq olunur. BOM varsa, onun göstərdiyi kodlaşdırmaya üstünlük verilir.",
     restoreScope: "Bərpa əhatəsi",
     restoreAll: "Bütün məzmun",

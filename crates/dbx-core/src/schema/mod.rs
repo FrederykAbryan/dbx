@@ -8231,7 +8231,7 @@ where
     retry_metadata_connection_for_session(state, connection_id, database, None, operation).await
 }
 
-async fn retry_metadata_connection_for_session<T, F, Fut>(
+pub(crate) async fn retry_metadata_connection_for_session<T, F, Fut>(
     state: &AppState,
     connection_id: &str,
     database: Option<&str>,
@@ -8246,7 +8246,7 @@ where
         .await
 }
 
-async fn run_metadata_connection_for_session<T, F, Fut>(
+pub(crate) async fn run_metadata_connection_for_session<T, F, Fut>(
     state: &AppState,
     connection_id: &str,
     database: Option<&str>,
@@ -12613,7 +12613,6 @@ fn oracle_list_objects_sql_for_owner(owner: &str, type_owner: &str) -> String {
          FROM all_objects o LEFT JOIN all_indexes i ON o.object_type = 'INDEX' AND i.owner = o.owner AND i.index_name = o.object_name \
          WHERE ((o.owner = {owner} AND o.object_type IN ('TABLE', 'VIEW', 'PROCEDURE', 'FUNCTION', 'TRIGGER', 'SEQUENCE', 'PACKAGE', 'PACKAGE BODY', 'INDEX')) \
             OR (o.owner = {type_owner} AND o.object_type IN ('TYPE', 'TYPE BODY'))) \
-         AND (o.object_type <> 'INDEX' OR i.generated = 'N' OR i.generated IS NULL) \
          ORDER BY CASE o.object_type WHEN 'TABLE' THEN 0 WHEN 'VIEW' THEN 1 WHEN 'PROCEDURE' THEN 2 WHEN 'FUNCTION' THEN 3 WHEN 'SEQUENCE' THEN 4 WHEN 'PACKAGE' THEN 5 WHEN 'PACKAGE BODY' THEN 6 ELSE 7 END, o.object_name, o.object_type"
     )
 }

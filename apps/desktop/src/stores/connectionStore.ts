@@ -2184,6 +2184,8 @@ export const useConnectionStore = defineStore("connection", () => {
       if (vgroupResolved) {
         children = applyTableVGroupsToChildren(children, tableVGroupLayouts.value[vgroupResolved.scopeKey], vgroupResolved.scope);
       }
+    } else if (children.some((child) => child.type === "group-tables" || isTreeGroupNodeType(child.type))) {
+      children = stripTableVGroupsFromChildren(children);
     }
     parent.children = markRawLeafTreeNodes(children);
     loadedTreeNodeChildrenIds.value.add(parent.id);
@@ -3975,10 +3977,23 @@ export const useConnectionStore = defineStore("connection", () => {
     const querySchema = connectionObjectTreeQuerySchema(config, parent.database, parent.schema);
     const objectTypes = sidebarIndexedObjectGroupTypes.has(parent.type) ? (objectTypesForGroupNode(parent.type) ?? undefined) : undefined;
     const pageSize = sidebarObjectGroupPageSize();
+    // 搜索索引必须与连接的表过滤器保持一致：用户右键设置的过滤条件在正常加载路径
+    // 由服务端（SQL LIKE）执行，索引若不带同一过滤器，过滤掉的表就会在搜索时重新出现。
+    // scope 的各字段与保存过滤器的 tableNameFilterScopeForNode 使用同一节点，键必须一致。
+    const tableNameFilter = effectiveTableNameFilterForNode(
+      parent,
+      activeTableNameFilterForScope({
+        connectionId,
+        database: parent.database,
+        schema: parent.schema,
+        nodeKind: parent.type,
+        catalog: parent.catalog,
+      }),
+    );
     const entries: TableInfo[] = [];
     for (let offset = 0; ; offset += pageSize) {
       if (!sidebarTableSearchIndexGenerationIsCurrent(connectionId, cacheKey, connectionGeneration, scopeGeneration)) return [];
-      const page = await listTablesWithOptionalTableNameFilter(connectionId, parent.database, querySchema, undefined, pageSize, offset, objectTypes, parent.catalog);
+      const page = await listTablesWithOptionalTableNameFilter(connectionId, parent.database, querySchema, undefined, pageSize, offset, objectTypes, parent.catalog, tableNameFilter);
       entries.push(...page);
       if (page.length < pageSize) break;
     }
@@ -8775,6 +8790,12 @@ export const useConnectionStore = defineStore("connection", () => {
 
   async function refreshTreeNodeForTableNameFilter(node: TreeNode, scopeKey: string, revision: number) {
     invalidateMetadataCachesForNode(node);
+    // 侧栏搜索索引的生命周期独立于元数据缓存：过滤器变更后若不失效旧索引，
+    // 顶部搜索会继续用未过滤的索引把过滤掉的表重新列出来。
+    const searchIndexScope = sidebarTableSearchIndexScopeForNode(node);
+    if (searchIndexScope) {
+      await invalidateSidebarTableSearchIndexScopes([searchIndexScope], (scope) => scope.parentNodeId === node.id);
+    }
     // !node.tableName is generic: table-level structure groups (columns/indexes/fkeys/constraints/partitions/table triggers)
     // stay off the schema-level object-group loader, not just triggers.
     if (objectTypesForGroupNode(node.type) && !node.tableName) {
@@ -10602,7 +10623,14 @@ export const useConnectionStore = defineStore("connection", () => {
   function reprojectTableVGroupScope(scope: TableVGroupScope, scopeKey: string, tableName?: string, rowType?: string) {
     const container = findTableVGroupContainerNode(treeNodes.value, scope, tableName, rowType);
     if (!container?.children) return;
-    if (container.children.some((child) => child.type === "group-tables" || isTreeGroupNodeType(child.type))) return;
+    if (container.children.some((child) => child.type === "group-tables" || isTreeGroupNodeType(child.type))) {
+      container.children = stripTableVGroupsFromChildren(container.children);
+      return;
+    }
+    const parent = findParentNode(treeNodes.value, container.id);
+    if (parent?.children && parent.children.some((child) => child.type === "group-tables" || isTreeGroupNodeType(child.type))) {
+      parent.children = stripTableVGroupsFromChildren(parent.children);
+    }
     container.children = applyTableVGroupsToChildren(stripTableVGroupsFromChildren(container.children), tableVGroupLayouts.value[scopeKey], scope);
   }
 

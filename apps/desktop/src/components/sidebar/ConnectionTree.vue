@@ -523,6 +523,18 @@ const globalSearchContext = [
   () => store.activeConnectionId,
   () => [...store.connectedIds].sort().join("\0"),
   () => [...queryStore.openDatabaseKeys].sort().join("\0"),
+  () => {
+    if (!settingsStore.editorSettings.sidebarSearchOpenedDatabasesOnly) return "";
+    const connectionId = store.activeConnectionId;
+    if (!connectionId) return "";
+    const rootPath = findNodePathByIdentity(store.treeNodes, connectionId, { connectionId, database: "", nodeType: "connection" });
+    const root = rootPath?.[rootPath.length - 1];
+    if (!root) return "";
+    const scope = resolveSidebarSearchDatabaseScope(root, { enabled: true, isChildrenLoaded: store.isTreeNodeChildrenLoaded, openDatabaseKeys: queryStore.openDatabaseKeys });
+    // Tree-only opens do not change editor tab keys. Observe scope membership,
+    // not descendant metadata or expansion flags, to avoid restarting builds.
+    return JSON.stringify([...(scope ?? [])].sort());
+  },
   () => store.sidebarTableSearchIndexInvalidation.revision,
   () => selectedSearchScopes.value.join(","),
 ];
@@ -2106,6 +2118,9 @@ function onSearchToggle(node: TreeNode) {
 }
 
 function onNodeToggled(node: TreeNode, expanded: boolean) {
+  // Explicit cached toggles may act on a search copy; synchronize only the
+  // expansion state, never replace the live subtree with projected children.
+  syncSidebarTreeNodeExpansion(store.treeNodes, node, expanded);
   if (isTreeSearchFiltering.value) return;
   sidebarLayoutMonitor.recordEvent({
     type: "expand-toggle",
@@ -2114,7 +2129,6 @@ function onNodeToggled(node: TreeNode, expanded: boolean) {
     nodeType: node.type,
     expanded,
   });
-  syncSidebarTreeNodeExpansion(store.treeNodes, node, expanded);
 }
 
 let contextMenuRequest = 0;
