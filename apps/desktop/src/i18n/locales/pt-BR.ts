@@ -1,3 +1,4 @@
+import { installedImportMessages } from "./installedImportMessages";
 import { tableColumnPastePtBR as tableColumnPaste } from "./tableColumnPaste";
 import { sidebarMenuPtBR as sidebarMenu } from "./sidebarMenuMessages";
 import { oceanbaseCloneDialogPtBR as oceanbaseCloneDialog } from "./oceanbaseCloneDialog";
@@ -66,6 +67,7 @@ const consul = {
 };
 
 export default withEnglishFallback({
+  installedImport: installedImportMessages["pt-BR"],
   oracleTrigger: {
     errorPositionUnavailable: "Código-fonte aberto. Não foi possível verificar a posição do erro; confira a linha e a coluna indicadas.",
     reconcileStructure: "Reconciliar alterações aplicadas",

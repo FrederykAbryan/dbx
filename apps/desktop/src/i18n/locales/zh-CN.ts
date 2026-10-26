@@ -1,3 +1,4 @@
+import { installedImportMessages } from "./installedImportMessages";
 import { tableColumnPasteZhCN as tableColumnPaste } from "./tableColumnPaste";
 import { sidebarMenuZhCN as sidebarMenu } from "./sidebarMenuMessages";
 import { oceanbaseCloneDialogZhCN as oceanbaseCloneDialog } from "./oceanbaseCloneDialog";
@@ -11,6 +12,7 @@ import { mongodbDatabaseDumpZhCN as mongoDump } from "./mongodbDatabaseDump";
 import { damengDumpZhCN as damengDump } from "./damengDump";
 
 export default withEnglishFallback({
+  installedImport: installedImportMessages["zh-CN"],
   oracleTrigger: {
     errorPositionUnavailable: "源码已打开，但无法核实错误位置，请按原行列检查。",
     reconcileStructure: "核对已执行改动",

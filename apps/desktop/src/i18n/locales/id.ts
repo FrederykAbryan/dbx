@@ -1,3 +1,4 @@
+import { installedImportMessages } from "./installedImportMessages";
 import { tableColumnPasteId as tableColumnPaste } from "./tableColumnPaste";
 import { sidebarMenuId as sidebarMenu } from "./sidebarMenuMessages";
 import { withEnglishFallback } from "./fallback";
@@ -8,6 +9,7 @@ import { sqlServerTraceMessages as sqlServerTrace } from "./sqlServerTraceMessag
 import { meilisearchManagementId } from "./meilisearchManagement";
 
 export default withEnglishFallback({
+  installedImport: installedImportMessages["id"],
   tableColumnPaste,
   objectDependencies: {
     dependencies: "Dependensi",

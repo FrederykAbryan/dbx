@@ -550,7 +550,7 @@ export function useDialogSources() {
     if (applyingImportSelection.value) return;
     const { preview, updates } = planInstalledConnectionImport(selections, connectionStore.connections);
     if (!preview.connections.length && !updates.length) {
-      toast(t("installedImport.alreadyImported", "Selected connections are already imported."), 3000);
+      toast(t("installedImport.alreadyImported"), 3000);
       showInstalledConnectionsDialog.value = false;
       return;
     }

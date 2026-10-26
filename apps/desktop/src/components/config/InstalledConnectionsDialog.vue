@@ -74,7 +74,7 @@ async function addFile() {
   try {
     const group = await props.readFile(manualSource.value);
     if (!group) return;
-    if (!group.preview.connections.length) throw new Error(t("installedImport.fileEmpty", "No supported connections found in this file."));
+    if (!group.preview.connections.length) throw new Error(t("installedImport.fileEmpty"));
     manualGroups.value.push(group);
   } catch (error) {
     errors.value.push(error instanceof Error ? error.message : String(error));
@@ -89,31 +89,31 @@ onMounted(scan);
   <Dialog :open="open" @update:open="!busy && emit('update:open', $event)">
     <DialogContent class="sm:max-w-[680px]">
       <DialogHeader
-        ><DialogTitle>{{ t("installedImport.title", "Import connections") }}</DialogTitle></DialogHeader
+        ><DialogTitle>{{ t("installedImport.title") }}</DialogTitle></DialogHeader
       >
       <div class="flex items-center justify-between gap-4">
-        <p class="text-sm font-medium">{{ t("installedImport.fromApps", "From installed apps") }}</p>
-        <Button variant="outline" size="sm" :disabled="loading || busy" @click="scan">{{ t("installedImport.rescan", "Scan again") }}</Button>
+        <p class="text-sm font-medium">{{ t("installedImport.fromApps") }}</p>
+        <Button variant="outline" size="sm" :disabled="loading || busy" @click="scan">{{ t("installedImport.rescan") }}</Button>
       </div>
-      <p class="text-sm text-muted-foreground">{{ t("installedImport.directHint", "DBX automatically finds saved connections in your database apps. Select the connections you want to import.") }}</p>
+      <p class="text-sm text-muted-foreground">{{ t("installedImport.directHint") }}</p>
       <p class="text-xs text-muted-foreground">DBeaver · DataGrip · Navicat · Redis Desktop Manager</p>
       <div class="flex flex-wrap items-center gap-2 rounded-md border p-3">
-        <label for="manual-connection-source" class="text-sm">{{ t("installedImport.manualApp", "Add connections from a file") }}</label>
+        <label for="manual-connection-source" class="text-sm">{{ t("installedImport.manualApp") }}</label>
         <select id="manual-connection-source" v-model="manualSource" :disabled="loading || busy" class="h-8 rounded-md border bg-background px-2 text-sm">
           <option v-for="(label, source) in installedConnectionAppLabels" :key="source" :value="source">{{ label }}</option>
         </select>
-        <Button variant="outline" size="sm" :disabled="loading || busy" @click="addFile">{{ readingFile ? t("installedImport.readingFile", "Reading…") : t("installedImport.addFile", "Add file…") }}</Button>
+        <Button variant="outline" size="sm" :disabled="loading || busy" @click="addFile">{{ readingFile ? t("installedImport.readingFile") : t("installedImport.addFile") }}</Button>
       </div>
       <div v-if="errors.length" role="alert" class="text-sm text-destructive">
         <p v-for="error in errors" :key="error">{{ error }}</p>
       </div>
       <label v-if="total" class="flex items-center gap-2 text-sm">
         <input type="checkbox" :checked="selected.size === total" :indeterminate="selected.size > 0 && selected.size < total" :disabled="loading || busy" @change="selectAll(($event.target as HTMLInputElement).checked)" />
-        {{ t("installedImport.selectAll", "Select all") }} ({{ total }})
+        {{ t("installedImport.selectAll") }} ({{ total }})
       </label>
       <div class="max-h-[380px] space-y-4 overflow-y-auto" aria-live="polite" :aria-busy="loading">
-        <p v-if="loading" class="py-4 text-sm text-muted-foreground">{{ t("installedImport.scanning", "Looking for saved connections…") }}</p>
-        <p v-else-if="!total" class="py-4 text-sm text-muted-foreground">{{ t("installedImport.emptyConnections", "No saved connections found automatically. You can add a Navicat, DBeaver, DataGrip, Redis Desktop Manager or DBX file above.") }}</p>
+        <p v-if="loading" class="py-4 text-sm text-muted-foreground">{{ t("installedImport.scanning") }}</p>
+        <p v-else-if="!total" class="py-4 text-sm text-muted-foreground">{{ t("installedImport.emptyConnections") }}</p>
         <section v-for="app in apps" :key="app.label" class="overflow-hidden rounded-md border">
           <h3 class="border-b bg-muted/30 px-3 py-2 text-sm font-medium">{{ app.label }} ({{ app.rows.length }})</h3>
           <label v-for="row in app.rows" :key="row.key" class="flex cursor-pointer items-center gap-3 border-b p-3 last:border-b-0 hover:bg-accent">
@@ -124,16 +124,16 @@ onMounted(scan);
                 >{{ row.connection.db_type }} · {{ row.connection.host }}<template v-if="row.connection.port">:{{ row.connection.port }}</template
                 ><template v-if="row.connection.database"> / {{ row.connection.database }}</template></span
               >
-              <span v-if="row.connection.password" class="block text-xs text-muted-foreground">{{ t("installedImport.savedPassword", "Saved password available") }}</span>
+              <span v-if="row.connection.password" class="block text-xs text-muted-foreground">{{ t("installedImport.savedPassword") }}</span>
             </span>
           </label>
         </section>
       </div>
-      <p class="text-xs text-muted-foreground">{{ t("installedImport.passwords", "Passwords protected by another app may need to be entered again after import.") }}</p>
-      <p v-if="allGroups.some((group) => group.label.includes('Wine'))" class="text-xs text-muted-foreground">{{ t("installedImport.winePasswordUpdate", "Matching Navicat (Wine) connections already in DBX receive missing saved passwords when selected.") }}</p>
+      <p class="text-xs text-muted-foreground">{{ t("installedImport.passwords") }}</p>
+      <p v-if="allGroups.some((group) => group.label.includes('Wine'))" class="text-xs text-muted-foreground">{{ t("installedImport.winePasswordUpdate") }}</p>
       <DialogFooter>
-        <Button variant="outline" :disabled="busy" @click="emit('update:open', false)">{{ t("installedImport.cancel", "Cancel") }}</Button>
-        <Button :disabled="loading || busy || !selected.size" @click="confirm">{{ busy ? t("installedImport.importing", "Importing…") : t("installedImport.importSelected", "Import selected") }} ({{ selected.size }})</Button>
+        <Button variant="outline" :disabled="busy" @click="emit('update:open', false)">{{ t("installedImport.cancel") }}</Button>
+        <Button :disabled="loading || busy || !selected.size" @click="confirm">{{ busy ? t("installedImport.importing") : t("installedImport.importSelected") }} ({{ selected.size }})</Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>

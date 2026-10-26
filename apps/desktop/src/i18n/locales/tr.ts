@@ -1,3 +1,4 @@
+import { installedImportMessages } from "./installedImportMessages";
 import { tableColumnPasteTr as tableColumnPaste } from "./tableColumnPaste";
 import { sidebarMenuTr as sidebarMenu } from "./sidebarMenuMessages";
 import { withEnglishFallback } from "./fallback";
@@ -62,6 +63,7 @@ const consul = {
 };
 
 export default withEnglishFallback({
+  installedImport: installedImportMessages["tr"],
   tableColumnPaste,
   objectDependencies: {
     dependencies: "Bağımlılıklar",

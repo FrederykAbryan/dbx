@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp, defineComponent, h, nextTick } from "vue";
 import { createI18n } from "vue-i18n";
 import InstalledConnectionsDialog from "./InstalledConnectionsDialog.vue";
+import { installedImportMessages } from "@/i18n/locales/installedImportMessages";
 
 const discover = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/imports/installedConnections", () => ({ loadInstalledConnectionGroups: discover, installedConnectionAppLabels: { navicat: "Navicat", dbeaver: "DBeaver", datagrip: "DataGrip", rdm: "Redis Desktop Manager", dbx: "DBX" } }));
@@ -41,11 +42,12 @@ async function mount(busy = false) {
   const root = document.createElement("div");
   document.body.append(root);
   const app = createApp(InstalledConnectionsDialog, { open: true, busy, readFile, onConfirm: confirm });
-  app.use(createI18n({ legacy: false, locale: "en", missingWarn: false, fallbackWarn: false, messages: { en: {} } }));
+  const i18n = createI18n({ legacy: false, locale: "en", missingWarn: false, fallbackWarn: false, messages: { en: { installedImport: installedImportMessages.en }, id: { installedImport: installedImportMessages.id } } });
+  app.use(i18n);
   app.mount(root);
   unmount = () => app.unmount();
   await flush();
-  return { root, confirm, readFile };
+  return { root, confirm, readFile, i18n };
 }
 const groups = [
   {
@@ -65,6 +67,18 @@ const groups = [
 const button = (root: HTMLElement, text: string) => [...root.querySelectorAll("button")].find((item) => item.textContent?.includes(text))!;
 
 describe("installed connections", () => {
+  it("updates the dialog when the language changes to Indonesian", async () => {
+    discover.mockResolvedValue({ groups: [], errors: [] });
+    const { root, i18n } = await mount();
+    expect(root.textContent).toContain("Import connections");
+    i18n.global.locale.value = "id";
+    await nextTick();
+    expect(root.textContent).toContain("Impor koneksi");
+    expect(button(root, "Tambahkan file")).toBeDefined();
+    expect(button(root, "Impor yang dipilih")).toBeDefined();
+    expect(root.textContent).not.toContain("No saved connections found");
+    expect(root.textContent).not.toContain("Import connections");
+  });
   it("shows individual connections and submits only checked rows across apps", async () => {
     discover.mockResolvedValue({ groups, errors: [] });
     const { root, confirm } = await mount();

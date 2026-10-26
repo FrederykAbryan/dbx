@@ -1,3 +1,4 @@
+import { installedImportMessages } from "./installedImportMessages";
 import { tableColumnPasteZhTW as tableColumnPaste } from "./tableColumnPaste";
 import { sidebarMenuZhTW as sidebarMenu } from "./sidebarMenuMessages";
 import { oceanbaseCloneDialogZhTW as oceanbaseCloneDialog } from "./oceanbaseCloneDialog";
@@ -67,6 +68,7 @@ const consul = {
 };
 
 export default withEnglishFallback({
+  installedImport: installedImportMessages["zh-TW"],
   oracleTrigger: {
     errorPositionUnavailable: "原始碼已開啟，但無法核實錯誤位置，請依原行列檢查。",
     reconcileStructure: "核對已執行變更",

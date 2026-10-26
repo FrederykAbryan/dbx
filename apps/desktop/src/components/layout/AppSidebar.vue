@@ -51,7 +51,7 @@ const showCreateSelectedGroupDialog = ref(false);
 const selectedGroupName = ref("");
 const UNGROUPED_GROUP_VALUE = "__ungrouped";
 const importSourceItems = computed(() => [
-  ...(isTauriRuntime() ? [{ value: "installed", label: t("installedImport.fromApps", "From installed apps") }] : []),
+  ...(isTauriRuntime() ? [{ value: "installed", label: t("installedImport.fromApps") }] : []),
   { value: "dbx", label: t("sidebar.importDbx") },
   { value: "navicat", label: t("sidebar.importNavicat") },
   { value: "dbeaver", label: t("sidebar.importDbeaver") },
