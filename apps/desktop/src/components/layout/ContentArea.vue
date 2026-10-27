@@ -2291,6 +2291,7 @@ defineExpose({
                 :model-value="activeTab.sql"
                 :tab-id="activeTab.id"
                 :connection-id="activeTab.connectionId"
+                :prefetch-completion="activeTab.mode === 'query' && !activeTab.sourceView"
                 :catalog="activeTab.catalog"
                 :database="activeTab.database"
                 :schema="activeTab.schema"
@@ -3164,7 +3165,7 @@ defineExpose({
                 </template>
               </DataGrid>
               <QueryLoadingState
-                v-else-if="(!activeTab.result || isQueryExecutionErrorResult(activeTab.result)) && activeTab.isExecuting"
+                v-else-if="activeTab.isExecuting && (!activeTab.result || !hasTabularResult || isQueryExecutionErrorResult(activeTab.result))"
                 class="flex-1 min-h-0"
                 :label-key="queryExecutionLabelKey(activeTab)"
                 :elapsed-seconds="queryRunningElapsedSeconds"

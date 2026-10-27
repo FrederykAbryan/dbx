@@ -12,6 +12,8 @@ export interface QueryEditorProps {
   connectionId?: string;
   catalog?: string;
   database?: string;
+  /** Warm table metadata for the active database; only query tabs enable this. */
+  prefetchCompletion?: boolean;
   schema?: string;
   clientSessionId?: string;
   completionContextVersion?: number;

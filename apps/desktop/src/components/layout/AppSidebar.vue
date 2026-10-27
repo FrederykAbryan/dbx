@@ -28,7 +28,7 @@ defineProps<{
 }>();
 
 const emit = defineEmits<{
-  import: [source: "installed" | "dbx" | "navicat" | "dbeaver" | "datagrip" | "rdm"];
+  import: [source: "installed" | "dbx" | "navicat" | "dbeaver" | "datagrip" | "rdm" | "another-redis"];
   export: [];
   startResize: [event: PointerEvent];
   collapse: [];
@@ -38,7 +38,7 @@ const emit = defineEmits<{
   "open-dependency-object": [context: ObjectDependencyTarget, target: SqlObjectNavigationTarget];
 }>();
 
-type ImportSource = "installed" | "dbx" | "navicat" | "dbeaver" | "datagrip" | "rdm";
+type ImportSource = "installed" | "dbx" | "navicat" | "dbeaver" | "datagrip" | "rdm" | "another-redis";
 
 const { t } = useI18n();
 const connectionStore = useConnectionStore();
@@ -57,6 +57,7 @@ const importSourceItems = computed(() => [
   { value: "dbeaver", label: t("sidebar.importDbeaver") },
   { value: "datagrip", label: t("sidebar.importDatagrip") },
   { value: "rdm", label: t("sidebar.importRdm") },
+  { value: "another-redis", label: t("sidebar.importAnotherRedis") },
 ]);
 const connectionTransferItems = computed(() => [
   ...importSourceItems.value.map((item) => ({

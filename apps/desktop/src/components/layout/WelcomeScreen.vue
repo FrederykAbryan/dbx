@@ -42,7 +42,7 @@ const emit = defineEmits<{
   "open-settings": [];
 }>();
 
-type ImportSource = "installed" | "dbx" | "navicat" | "dbeaver" | "datagrip" | "rdm";
+type ImportSource = "installed" | "dbx" | "navicat" | "dbeaver" | "datagrip" | "rdm" | "another-redis";
 
 const { t } = useI18n();
 
@@ -53,6 +53,7 @@ const importSourceItems = computed(() => [
   { value: "dbeaver", label: t("sidebar.importDbeaver") },
   { value: "datagrip", label: t("sidebar.importDatagrip") },
   { value: "rdm", label: t("sidebar.importRdm") },
+  { value: "another-redis", label: t("sidebar.importAnotherRedis") },
 ]);
 
 function selectImportSource(source: string) {

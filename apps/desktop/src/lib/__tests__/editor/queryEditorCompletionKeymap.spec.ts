@@ -568,7 +568,7 @@ describe("QueryEditor completion Tab keymap", () => {
   });
 
   it("triggers completion on Alt+/ through the manual shortcut and skips while composing", () => {
-    const source = [extractDeclaration(/const COMPLETION_DEBOUNCE_DELAY_MS = \d+;/, "completion debounce delay"), "let imeCompositionActive = false;", extractFunction("isEditorComposing"), extractFunction("triggerSqlCompletion")].join("\n");
+    const source = [extractDeclaration(/const COMPLETION_DEBOUNCE_DELAY_MS = \d+;/, "completion debounce delay"), "let imeCompositionActive = false;", "let imeCompositionRecovered = false;", extractFunction("isEditorComposing"), extractFunction("triggerSqlCompletion")].join("\n");
     const javascript = ts.transpileModule(source, {
       compilerOptions: { module: ts.ModuleKind.None, target: ts.ScriptTarget.ES2022 },
     }).outputText;
