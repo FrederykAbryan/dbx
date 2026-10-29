@@ -44,7 +44,7 @@ const oracleDatabaseVersionProbeTimeout = 3 * time.Second
 const oracleDatabaseVersionSQL = `
 SELECT VERSION
 FROM PRODUCT_COMPONENT_VERSION
-WHERE PRODUCT LIKE 'Oracle Database%'
+WHERE PRODUCT LIKE 'Oracle%Database%'
   AND ROWNUM = 1`
 
 const oracleDisableSegmentAttributesSQL = `BEGIN DBMS_METADATA.SET_TRANSFORM_PARAM(DBMS_METADATA.SESSION_TRANSFORM, 'SEGMENT_ATTRIBUTES', FALSE); END;`
@@ -59,7 +59,7 @@ var (
 	oracleNotNullConstraintRegexp        = regexp.MustCompile(`(?i)^\s*\(*\s*(?:"((?:[^"]|"")*)"|([A-Z0-9_$#]+))\s+IS\s+NOT\s+NULL\s*\)*\s*$`)
 	oracleDatabaseVersionQueries         = []string{
 		oracleDatabaseVersionSQL,
-		`SELECT BANNER FROM V$VERSION WHERE BANNER LIKE 'Oracle Database%' AND ROWNUM = 1`,
+		`SELECT BANNER FROM V$VERSION WHERE BANNER LIKE 'Oracle%Database%' AND ROWNUM = 1`,
 	}
 	oracleStringConverters = map[int]converters.IStringConverter{
 		oracleCharsetZHS32GB18030: oracleGB18030Converter{},
@@ -1132,6 +1132,9 @@ func (s *server) dispatch(method string, params map[string]json.RawMessage) (any
 			return nil, false, errors.New("not connected")
 		}
 		return map[string]bool{"ok": true}, false, pingDB(s.db, 5*time.Second)
+	case "connection_info":
+		result, err := s.connectionInfo()
+		return result, false, err
 	case "list_databases":
 		result, err := s.listDatabases()
 		return result, false, err
@@ -5067,6 +5070,10 @@ func shouldRetryOracleXMLTypeRewrite(err error) bool {
 	if err == nil {
 		return false
 	}
+	var decodeErr oracleProtocolDecodeError
+	if errors.As(err, &decodeErr) {
+		return true
+	}
 	message := err.Error()
 	return strings.Contains(message, "abnormal data representation for date") ||
 		strings.Contains(message, "TTC error: received code ")
@@ -6160,10 +6167,10 @@ func (s *server) setSchema(schema string) error {
 }
 
 // repinPoisonedStatementConn replaces the statement's pinned connection once a
-// driver panic has poisoned it, so the placeholder fallbacks of the same
-// statement do not fail on the dead session (issue #13455). The fresh
-// connection gets the statement's CURRENT_SCHEMA back; the statement's owner
-// closes it together with the original one.
+// driver panic or a response decode error has poisoned it, so the fallbacks of
+// the same statement do not fail on the dead session (issues #13455, #13667).
+// The fresh connection gets the statement's CURRENT_SCHEMA back; the
+// statement's owner closes it together with the original one.
 func (s *server) repinPoisonedStatementConn() error {
 	if s.manualTx != nil || s.statementConn == nil || !oracleConnPoisoned(s.statementConn) {
 		return nil
