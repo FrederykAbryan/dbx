@@ -16,45 +16,79 @@ pub struct DiscoveredConnectionSource {
     content: String,
 }
 
-fn read_text(path: &Path) -> Option<String> {
-    String::from_utf8(read_bytes(path)?).ok()
+const MAX_SOURCES: usize = 100;
+const MAX_SCAN_ENTRIES: usize = 2000;
+const MAX_SCAN_BYTES: u64 = 64 * 1024 * 1024;
+const MAX_FILE_BYTES: u64 = 8 * 1024 * 1024;
+const MAX_WINE_PREFIXES: usize = 64;
+
+/// Limits shared by every collector in one discovery pass. Each directory or
+/// Wine prefix visited and each file read takes an entry; file contents also
+/// consume bytes, checked before the file is read.
+struct ScanBudget {
+    entries: usize,
+    bytes: u64,
 }
 
-fn read_bytes(path: &Path) -> Option<Vec<u8>> {
-    // Bound memory use and skip directories, links, and unexpectedly large files.
-    let metadata = std::fs::symlink_metadata(path).ok()?;
-    if !metadata.is_file() || metadata.len() > 8 * 1024 * 1024 {
-        return None;
+impl ScanBudget {
+    fn new() -> Self {
+        Self { entries: MAX_SCAN_ENTRIES, bytes: MAX_SCAN_BYTES }
     }
-    std::fs::read(path).ok()
+
+    fn take_entry(&mut self) -> bool {
+        if self.entries == 0 {
+            return false;
+        }
+        self.entries -= 1;
+        true
+    }
+
+    fn read_text(&mut self, path: &Path) -> Option<String> {
+        String::from_utf8(self.read_bytes(path)?).ok()
+    }
+
+    fn read_bytes(&mut self, path: &Path) -> Option<Vec<u8>> {
+        use std::io::Read;
+        // Bound memory use and skip directories, links, and unexpectedly large files.
+        let metadata = std::fs::symlink_metadata(path).ok()?;
+        let limit = MAX_FILE_BYTES.min(self.bytes);
+        if !metadata.is_file() || metadata.len() > limit || !self.take_entry() {
+            return None;
+        }
+        // Cap the read too, in case the file grew after its size was checked.
+        let mut bytes = Vec::new();
+        std::fs::File::open(path).ok()?.take(limit + 1).read_to_end(&mut bytes).ok()?;
+        self.bytes = self.bytes.saturating_sub(bytes.len() as u64);
+        (bytes.len() as u64 <= limit).then_some(bytes)
+    }
 }
 
-fn collect(root: &Path, depth: usize, output: &mut Vec<DiscoveredConnectionSource>, remaining: &mut usize) {
-    if *remaining == 0
-        || output.len() >= 100
+fn collect(root: &Path, depth: usize, output: &mut Vec<DiscoveredConnectionSource>, budget: &mut ScanBudget) {
+    if output.len() >= MAX_SOURCES
         || std::fs::symlink_metadata(root).map_or(true, |m| m.file_type().is_symlink())
+        || !budget.take_entry()
     {
         return;
     }
-    *remaining -= 1;
     let Ok(entries) = std::fs::read_dir(root) else { return };
     let mut entries: Vec<_> = entries.flatten().take(500).collect();
     entries.sort_by_key(|entry| entry.file_name());
     for entry in entries {
-        if output.len() >= 100 {
+        if output.len() >= MAX_SOURCES {
             break;
         }
         let path = entry.path();
         let Ok(kind) = entry.file_type() else { continue };
         if kind.is_dir() && depth > 0 {
-            collect(&path, depth - 1, output, remaining);
+            collect(&path, depth - 1, output, budget);
         } else if kind.is_file() {
             let name = entry.file_name();
             let name = name.to_string_lossy();
             let (source, label, content) = match name.as_ref() {
                 "data-sources.json" => {
-                    let Some(data) = read_text(&path) else { continue };
-                    let credentials = read_bytes(&root.join("credentials-config.json"))
+                    let Some(data) = budget.read_text(&path) else { continue };
+                    let credentials = budget
+                        .read_bytes(&root.join("credentials-config.json"))
                         .map(|bytes| base64::engine::general_purpose::STANDARD.encode(bytes))
                         .unwrap_or_default();
                     (
@@ -64,20 +98,20 @@ fn collect(root: &Path, depth: usize, output: &mut Vec<DiscoveredConnectionSourc
                     )
                 }
                 "dataSources.xml" => {
-                    let Some(data) = read_text(&path) else { continue };
+                    let Some(data) = budget.read_text(&path) else { continue };
                     (
                         "datagrip",
                         "DataGrip",
                         serde_json::json!({
                             "format": "datagrip-import", "dataSources": data,
-                            "dataSourcesLocal": read_text(&root.join("dataSources.local.xml")).unwrap_or_default(),
-                            "dbForestConfig": read_text(&root.join("db-forest-config.xml")).unwrap_or_default()
+                            "dataSourcesLocal": budget.read_text(&root.join("dataSources.local.xml")).unwrap_or_default(),
+                            "dbForestConfig": budget.read_text(&root.join("db-forest-config.xml")).unwrap_or_default()
                         })
                         .to_string(),
                     )
                 }
                 "connections.json" => {
-                    let Some(data) = read_text(&path) else { continue };
+                    let Some(data) = budget.read_text(&path) else { continue };
                     (
                         "rdm",
                         "Redis Desktop Manager",
@@ -99,6 +133,15 @@ fn collect(root: &Path, depth: usize, output: &mut Vec<DiscoveredConnectionSourc
 }
 
 fn discover(home: &Path, config: &Path, data: &Path) -> Vec<DiscoveredConnectionSource> {
+    discover_with_budget(home, config, data, &mut ScanBudget::new())
+}
+
+fn discover_with_budget(
+    home: &Path,
+    config: &Path,
+    data: &Path,
+    budget: &mut ScanBudget,
+) -> Vec<DiscoveredConnectionSource> {
     let mut output = Vec::new();
     let roots: Vec<(PathBuf, usize)> = vec![
         (data.join("DBeaverData"), 6),
@@ -114,32 +157,37 @@ fn discover(home: &Path, config: &Path, data: &Path) -> Vec<DiscoveredConnection
         (config.join("rdm"), 1),
         (config.join("RedisDesktopManager"), 2),
     ];
-    let mut remaining = 2000;
     for (root, depth) in roots {
-        collect(&root, depth, &mut output, &mut remaining);
+        collect(&root, depth, &mut output, budget);
     }
     // Native Linux store documented by Navicat; also find NCX files saved
     // inside its configuration folders. These are distinct from RDM JSON.
     for root in [config.join("navicat"), home.join(".config/navicat"), home.join(".navicat"), home.join(".navicat64")] {
-        collect_navicat(&root, 5, &mut output, &mut remaining);
+        collect_navicat(&root, 5, &mut output, budget);
     }
-    collect_navicat_wine(home, data, &mut output);
+    collect_navicat_wine(home, data, &mut output, budget);
     output
 }
 
-fn collect_navicat_wine(home: &Path, data: &Path, output: &mut Vec<DiscoveredConnectionSource>) {
+fn collect_navicat_wine(
+    home: &Path,
+    data: &Path,
+    output: &mut Vec<DiscoveredConnectionSource>,
+    budget: &mut ScanBudget,
+) {
     let mut prefixes = vec![home.join(".wine")];
     if let Some(prefix) = std::env::var_os("WINEPREFIX") {
         prefixes.push(PathBuf::from(prefix));
     }
     if let Ok(entries) = std::fs::read_dir(home) {
-        prefixes.extend(
-            entries
-                .flatten()
-                .take(1000)
-                .filter(|entry| entry.file_name().to_string_lossy().starts_with(".wine"))
-                .map(|entry| entry.path()),
-        );
+        let mut wine: Vec<_> = entries
+            .flatten()
+            .take(1000)
+            .filter(|entry| entry.file_name().to_string_lossy().starts_with(".wine"))
+            .map(|entry| entry.path())
+            .collect();
+        wine.sort();
+        prefixes.extend(wine);
     }
     for root in [
         data.join("bottles/bottles"),
@@ -148,19 +196,22 @@ fn collect_navicat_wine(home: &Path, data: &Path, output: &mut Vec<DiscoveredCon
         home.join(".PlayOnLinux/wineprefix"),
     ] {
         if let Ok(entries) = std::fs::read_dir(root) {
-            prefixes.extend(entries.flatten().take(100).map(|entry| entry.path()));
+            prefixes.extend(entries.flatten().take(MAX_WINE_PREFIXES).map(|entry| entry.path()));
         }
     }
     let mut seen = std::collections::HashSet::new();
-    for prefix in prefixes {
-        if output.len() >= 100 {
+    for prefix in prefixes.into_iter().take(MAX_WINE_PREFIXES) {
+        // Each prefix costs an entry before it is touched, and its registry
+        // file is read through the shared budget, so many prefixes or large
+        // registries cannot exceed the limits the rest of the scan honors.
+        if output.len() >= MAX_SOURCES || budget.bytes == 0 || !budget.take_entry() {
             break;
         }
         let Ok(path) = std::fs::canonicalize(prefix.join("user.reg")) else { continue };
         if !seen.insert(path.clone()) {
             continue;
         }
-        let Some(registry) = read_text(&path) else { continue };
+        let Some(registry) = budget.read_text(&path) else { continue };
         let connections = navicat_wine::parse(&registry);
         if !connections.is_empty() {
             output.push(DiscoveredConnectionSource {
@@ -173,30 +224,29 @@ fn collect_navicat_wine(home: &Path, data: &Path, output: &mut Vec<DiscoveredCon
     }
 }
 
-fn collect_navicat(root: &Path, depth: usize, output: &mut Vec<DiscoveredConnectionSource>, remaining: &mut usize) {
-    if *remaining == 0
-        || output.len() >= 100
+fn collect_navicat(root: &Path, depth: usize, output: &mut Vec<DiscoveredConnectionSource>, budget: &mut ScanBudget) {
+    if output.len() >= MAX_SOURCES
         || std::fs::symlink_metadata(root).map_or(true, |m| m.file_type().is_symlink())
+        || !budget.take_entry()
     {
         return;
     }
-    *remaining -= 1;
     let Ok(entries) = std::fs::read_dir(root) else { return };
     let mut entries: Vec<_> = entries.flatten().take(500).collect();
     entries.sort_by_key(|entry| entry.file_name());
     for entry in entries {
-        if output.len() >= 100 {
+        if output.len() >= MAX_SOURCES {
             break;
         }
         let path = entry.path();
         let Ok(kind) = entry.file_type() else { continue };
         if kind.is_dir() && depth > 0 {
-            collect_navicat(&path, depth - 1, output, remaining);
+            collect_navicat(&path, depth - 1, output, budget);
         } else if kind.is_file()
             && (entry.file_name() == "connections.json"
                 || path.extension().and_then(|ext| ext.to_str()).is_some_and(|ext| ext.eq_ignore_ascii_case("ncx")))
         {
-            let Some(content) = read_text(&path) else { continue };
+            let Some(content) = budget.read_text(&path) else { continue };
             if !output.iter().any(|item| item.path == path.to_string_lossy()) {
                 output.push(DiscoveredConnectionSource {
                     source: "navicat".into(),
@@ -281,5 +331,69 @@ mod tests {
         assert!(!sources[0].content.contains("private-blob"));
         let payload: serde_json::Value = serde_json::from_str(&sources[0].content).unwrap();
         assert_eq!(payload["connections"][0]["Name"], "Demo");
+    }
+
+    const WINE_REGISTRY: &str =
+        "[Software\\\\PremiumSoft\\\\Navicat\\\\Servers\\\\Demo] 1\n\"Host\"=\"mysql.example\"\n";
+
+    fn wine_prefixes(home: &Path, count: usize) {
+        for index in 0..count {
+            let prefix = home.join(format!(".wine{index:03}"));
+            std::fs::create_dir_all(&prefix).unwrap();
+            std::fs::write(prefix.join("user.reg"), WINE_REGISTRY).unwrap();
+        }
+    }
+
+    fn scan_wine(home: &Path, budget: &mut ScanBudget) -> Vec<DiscoveredConnectionSource> {
+        let mut output = Vec::new();
+        collect_navicat_wine(home, home, &mut output, budget);
+        output
+    }
+
+    #[test]
+    fn wine_scan_caps_prefixes_even_with_an_ample_budget() {
+        let temp = tempfile::tempdir().unwrap();
+        wine_prefixes(temp.path(), MAX_WINE_PREFIXES + 40);
+        let mut budget = ScanBudget::new();
+        let sources = scan_wine(temp.path(), &mut budget);
+        assert!(!sources.is_empty());
+        assert!(sources.len() <= MAX_WINE_PREFIXES);
+        // One entry per prefix visited plus one per registry file read.
+        assert!(MAX_SCAN_ENTRIES - budget.entries <= 2 * MAX_WINE_PREFIXES);
+    }
+
+    #[test]
+    fn wine_scan_stops_reading_registries_when_the_byte_budget_is_spent() {
+        let temp = tempfile::tempdir().unwrap();
+        wine_prefixes(temp.path(), 20);
+        let mut budget = ScanBudget { entries: MAX_SCAN_ENTRIES, bytes: 3 * WINE_REGISTRY.len() as u64 };
+        let sources = scan_wine(temp.path(), &mut budget);
+        assert_eq!(sources.len(), 3);
+        assert_eq!(budget.bytes, 0);
+    }
+
+    #[test]
+    fn wine_scan_stops_visiting_prefixes_when_the_entry_budget_is_spent() {
+        let temp = tempfile::tempdir().unwrap();
+        wine_prefixes(temp.path(), 20);
+        let mut budget = ScanBudget { entries: 6, bytes: MAX_SCAN_BYTES };
+        let sources = scan_wine(temp.path(), &mut budget);
+        assert!(sources.len() <= 3);
+        assert_eq!(budget.entries, 0);
+    }
+
+    #[test]
+    fn wine_scan_shares_the_budget_left_by_the_ordinary_scan() {
+        let temp = tempfile::tempdir().unwrap();
+        let home = temp.path();
+        let datagrip = home.join("config/JetBrains/DataGrip2026/options");
+        std::fs::create_dir_all(&datagrip).unwrap();
+        std::fs::write(datagrip.join("dataSources.xml"), "<project/>").unwrap();
+        wine_prefixes(home, 5);
+        // Room for the DataGrip file and less than one registry file.
+        let mut budget = ScanBudget { entries: MAX_SCAN_ENTRIES, bytes: "<project/>".len() as u64 + 1 };
+        let sources = discover_with_budget(home, &home.join("config"), &home.join(".local/share"), &mut budget);
+        assert_eq!(sources.len(), 1);
+        assert_eq!(sources[0].source, "datagrip");
     }
 }

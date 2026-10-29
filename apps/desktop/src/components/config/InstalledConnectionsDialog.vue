@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { ChevronRight } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { installedConnectionAppLabels, loadInstalledConnectionGroups, type InstalledConnectionGroup, type InstalledConnectionSelection, type InstalledConnectionSource } from "@/lib/imports/installedConnections";
@@ -18,6 +19,7 @@ const manualSource = ref<InstalledConnectionSource["source"]>("navicat");
 const readingFile = ref(false);
 const busy = computed(() => props.busy || readingFile.value);
 const selected = ref(new Set<string>());
+const collapsed = ref(new Set<string>());
 const loading = ref(false);
 const errors = ref<string[]>([]);
 const rowKey = (group: InstalledConnectionGroup, id: string) => JSON.stringify([group.path, id]);
@@ -37,6 +39,12 @@ function toggle(key: string, checked: boolean) {
   if (checked) next.add(key);
   else next.delete(key);
   selected.value = next;
+}
+
+function toggleCollapsed(label: string) {
+  const next = new Set(collapsed.value);
+  if (!next.delete(label)) next.add(label);
+  collapsed.value = next;
 }
 
 function selectAll(checked: boolean) {
@@ -87,7 +95,7 @@ onMounted(scan);
 
 <template>
   <Dialog :open="open" @update:open="!busy && emit('update:open', $event)">
-    <DialogContent class="sm:max-w-[680px]">
+    <DialogContent class="sm:max-w-170">
       <DialogHeader
         ><DialogTitle>{{ t("installedImport.title") }}</DialogTitle></DialogHeader
       >
@@ -111,12 +119,17 @@ onMounted(scan);
         <input type="checkbox" :checked="selected.size === total" :indeterminate="selected.size > 0 && selected.size < total" :disabled="loading || busy" @change="selectAll(($event.target as HTMLInputElement).checked)" />
         {{ t("installedImport.selectAll") }} ({{ total }})
       </label>
-      <div class="max-h-[380px] space-y-4 overflow-y-auto" aria-live="polite" :aria-busy="loading">
+      <div class="max-h-95 space-y-4 overflow-y-auto" aria-live="polite" :aria-busy="loading">
         <p v-if="loading" class="py-4 text-sm text-muted-foreground">{{ t("installedImport.scanning") }}</p>
         <p v-else-if="!total" class="py-4 text-sm text-muted-foreground">{{ t("installedImport.emptyConnections") }}</p>
         <section v-for="app in apps" :key="app.label" class="overflow-hidden rounded-md border">
-          <h3 class="border-b bg-muted/30 px-3 py-2 text-sm font-medium">{{ app.label }} ({{ app.rows.length }})</h3>
-          <label v-for="row in app.rows" :key="row.key" class="flex cursor-pointer items-center gap-3 border-b p-3 last:border-b-0 hover:bg-accent">
+          <h3 class="bg-muted/30 text-sm font-medium" :class="{ 'border-b': !collapsed.has(app.label) }">
+            <button type="button" class="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-accent" :aria-expanded="!collapsed.has(app.label)" @click="toggleCollapsed(app.label)">
+              <ChevronRight class="size-4 shrink-0 transition-transform" :class="{ 'rotate-90': !collapsed.has(app.label) }" />
+              {{ app.label }} ({{ app.rows.length }})
+            </button>
+          </h3>
+          <label v-for="row in collapsed.has(app.label) ? [] : app.rows" :key="row.key" class="flex cursor-pointer items-center gap-3 border-b p-3 last:border-b-0 hover:bg-accent">
             <input type="checkbox" :checked="selected.has(row.key)" :disabled="busy" @change="toggle(row.key, ($event.target as HTMLInputElement).checked)" />
             <span class="min-w-0">
               <span class="block truncate text-sm font-medium">{{ row.connection.name }}</span>

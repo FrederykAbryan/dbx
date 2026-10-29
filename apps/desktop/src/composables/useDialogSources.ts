@@ -559,12 +559,17 @@ export function useDialogSources() {
     applyingImportSelection.value = true;
     try {
       for (const update of updates) await connectionStore.updateConnection(update);
+      const existingIds = new Set(connectionStore.connections.map((connection) => connection.id));
       const { count, layout } = preview.connections.length ? await connectionStore.applyConnectionsImport(preview) : { count: 0, layout: undefined };
-      // Restore each DataGrip payload for its optional Keychain lookup.
+      const importedIds = connectionStore.connections.map((connection) => connection.id).filter((id) => !existingIds.has(id));
+      // Keychain lookups cover only the selected DataGrip rows, and fill only
+      // connections this import created, so unselected rows keep their passwords.
       for (const selection of selections.filter((item) => item.group.source === "datagrip")) {
+        const selectedIds = new Set(selection.connectionIds);
+        const selected = selection.group.preview.connections.filter((connection) => selectedIds.has(connection.id));
+        if (!selected.length || !importedIds.length) continue;
         try {
-          await connectionStore.parseConnectionsImport(selection.group.content, null);
-          await connectionStore.applyDataGripKeychainPasswords();
+          await connectionStore.applyDataGripKeychainPasswords({ payload: JSON.parse(selection.group.content), selected, connectionIds: importedIds });
         } catch {
           // The imported connection remains usable with credentials entered manually.
         }
